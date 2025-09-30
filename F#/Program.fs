@@ -9,12 +9,18 @@ let Add (numbers: string) : int =
     | "" -> 0
     | _ -> 
     let numbers_list = numbers.Split "," |> Seq.toList
-    match numbers_list.Length with
-    | 1 -> int numbers_list[0]
-    | 2 -> int numbers_list[0] + int numbers_list[1]
-    // result -1 for a not considered case
-    | _ -> -1
-let test_cases = ["1,2";"1";"";"1,sd"]
+    try numbers_list |> List.map int |> List.sum with
+    | ex ->
+        // Catch any exception type (general catch-all) and return error result
+        printfn "An error occurred: %s" ex.Message
+        -1
+let test_cases = [
+    "1,2"
+    "1"
+    ""
+    "1,sd"
+    "1,2,3,4"
+]
 for test in test_cases do
     printfn "result of \"%s\": %d" test (Add test)
 

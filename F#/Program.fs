@@ -14,6 +14,10 @@ let extract_delimeter (numbers_with_delimeter : string) : option<string> * strin
             Array.ofList tail |> System.String.Concat // rest of the numbers string
         | _ -> None, numbers_with_delimeter
 
+
+let extract_negatives (numbers_list: list<int>): list<int> =
+    List.filter (fun n -> n<0) numbers_list
+
 let Add (numbers_with_delimeter: string) : int = 
     match numbers_with_delimeter with
     | "" -> 0
@@ -25,11 +29,13 @@ let Add (numbers_with_delimeter: string) : int =
         | None -> [|","; "\n"|]
     let options = System.StringSplitOptions.TrimEntries
     let numbers_list = numbers.Split(delimeters, options) |> Seq.toList
-    try numbers_list |> List.map int |> List.sum with
-    | ex ->
-        // Catch any exception type (general catch-all) and return error result
-        printfn "An error occurred: %s" ex.Message
-        -1
+    let int_list = numbers_list |> List.map int
+    let negative_numbers = extract_negatives int_list
+    if List.length negative_numbers > 0 then
+        failwith ("negatives not allowed: " + System.String.Join(", ", negative_numbers))
+    else
+    int_list |> List.sum
+
 let test_cases = [
     "1,2"
     "1"
@@ -40,7 +46,13 @@ let test_cases = [
     "1\n2,3\n4"
     "//;\n1;2"
     "//@\n1@2"
+    "1,-2,-3"
+    "1,-2, 2, 3, -5"
+    "-0"
 ]
 for test in test_cases do
-    printfn "result of \"%s\": %d" (test.Replace("\n", "\\n")) (Add test)
+    try 
+    printfn "result of \"%s\": %d" (test.Replace("\n", "\\n")) (Add test) 
+    with 
+    | ex -> printfn "input \"%s\" failed with error: \"%s\"" (test.Replace("\n", "\\n")) ex.Message
 

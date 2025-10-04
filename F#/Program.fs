@@ -4,15 +4,42 @@
 
 // printfn "calculation is: %d" result
 
-// if numbers_with_delimeter has delimiter, separates the delimeter from the input, and returns them separately in a tuple
-// else return the tuple (None, numbers_with_delimeter)
-let extract_delimeter (numbers_with_delimeter : string) : option<string> * string =
-    let char_list = numbers_with_delimeter.ToCharArray() |> Seq.toList
+let separate_numbers_with_delimiters (numbers_with_delimiter : string) : option<string> * string = 
+    let char_list = numbers_with_delimiter.ToCharArray() |> Seq.toList
     match char_list with
-        | '/'::'/'::delimeter::'\n' :: tail -> 
-            Some(delimeter.ToString()), // delimeter captured
-            Array.ofList tail |> System.String.Concat // rest of the numbers string
-        | _ -> None, numbers_with_delimeter
+    | '/'::'/':: tail ->
+    let separation_index = List.findIndex (fun c -> c='\n') tail
+    let list_without_newline = List.removeAt separation_index tail
+    let delimiter_char_list, numbers_char_list = List.splitAt separation_index list_without_newline
+    let ret = Some(System.String.Concat delimiter_char_list), System.String.Concat numbers_char_list
+    ret
+    | _ -> None, numbers_with_delimiter
+
+let rec parse_flexible_delimiter (delimiter_expr: list<char>) (partial_delimiter: list<char>): list<char> =
+    match delimiter_expr with
+    | ']' :: _ -> 
+        if partial_delimiter.Length = 0 then failwith "empty delimiter encountered"
+        else partial_delimiter
+    | head :: tail ->  
+        parse_flexible_delimiter tail (partial_delimiter @ [head])
+    | _ -> failwith "unusual end of string on delimiter encountered"
+
+// get a delimiter expression and returns an array of delimiter strings
+let parse_delimiters (delimiter_str : option<string>) : array<string> =
+    match delimiter_str with
+    | None -> [||]
+    | Some delimiter_expr_string ->
+    // get the string between // and \n
+    match delimiter_expr_string.Length with
+    | 1 -> [|delimiter_expr_string|] // single character delimiter captured
+    | _ -> // complex delimiters
+    let delimiter_char_list = delimiter_expr_string |> Seq.toList
+    match delimiter_char_list with
+    | '[' :: tail ->
+    let res = parse_flexible_delimiter tail [] 
+            |> System.String.Concat 
+    [|res|]
+    | _ -> failwith "complex delimiter expression have to start with '['"
 
 
 let extract_negatives (numbers_list: list<int>): list<int> =
@@ -27,17 +54,18 @@ let extract_value (snumber: string): int =
         | Giant -> 0
         | Valid -> number
 
-let Add (numbers_with_delimeter: string) : int = 
-    match numbers_with_delimeter with
+let Add (numbers_with_delimiter: string) : int = 
+    match numbers_with_delimiter with
     | "" -> 0
     | _ -> 
-    let custom_delimeter, numbers = extract_delimeter numbers_with_delimeter
-    let delimeters = 
-        match custom_delimeter with
-        | Some d -> [|","; "\n"; d|]
-        | None -> [|","; "\n"|]
+    let delimiter_str, numbers = separate_numbers_with_delimiters numbers_with_delimiter
+    let custom_delimiter = parse_delimiters delimiter_str
+    let default_delimiters = [|","; "\n"|]
+    let delimiters = Array.append default_delimiters custom_delimiter
+
+    // split string and extract value of numbers
     let options = System.StringSplitOptions.TrimEntries
-    let numbers_list = numbers.Split(delimeters, options) |> Seq.toList
+    let numbers_list = numbers.Split(delimiters, options) |> Seq.toList
     let int_list = numbers_list |> List.map extract_value
     let negative_numbers = extract_negatives int_list
     if List.length negative_numbers > 0 then
@@ -60,6 +88,8 @@ let test_cases = [
     "-0"
     "2,1001"
     "1,1000,50,2"
+    "//[***]\n1***2***3"
+    "//[***]\n1\n2***3"
 ]
 for test in test_cases do
     try 

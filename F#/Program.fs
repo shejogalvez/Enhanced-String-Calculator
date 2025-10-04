@@ -24,6 +24,13 @@ let rec parse_flexible_delimiter (delimiter_expr: list<char>) (partial_delimiter
         parse_flexible_delimiter tail (partial_delimiter @ [head])
     | _ -> failwith "unusual end of string on delimiter encountered"
 
+let rec parse_multiple_delimiters (delimiter_expr: list<char>): list<string> =
+    match delimiter_expr with
+    | '[' :: delimeter :: ']' :: tail -> 
+        let delimeter_str = delimeter.ToString()
+        delimeter_str :: parse_multiple_delimiters tail 
+    | _ -> []
+
 // get a delimiter expression and returns an array of delimiter strings
 let parse_delimiters (delimiter_str : option<string>) : array<string> =
     match delimiter_str with
@@ -36,9 +43,13 @@ let parse_delimiters (delimiter_str : option<string>) : array<string> =
     let delimiter_char_list = delimiter_expr_string |> Seq.toList
     match delimiter_char_list with
     | '[' :: tail ->
-    let res = parse_flexible_delimiter tail [] 
-            |> System.String.Concat 
-    [|res|]
+    let multiple_delimeters = parse_multiple_delimiters delimiter_char_list
+    if List.length multiple_delimeters > 0 
+    then Seq.toArray multiple_delimeters
+    else
+        let res = parse_flexible_delimiter tail [] 
+                |> System.String.Concat 
+        [|res|]
     | _ -> failwith "complex delimiter expression have to start with '['"
 
 
@@ -90,6 +101,9 @@ let test_cases = [
     "1,1000,50,2"
     "//[***]\n1***2***3"
     "//[***]\n1\n2***3"
+    "//[*][%]\n1*2%3"
+    "//[%][*]\n1*2%3"
+    "//[%][*]\n1\n2%3,4*5"
 ]
 for test in test_cases do
     try 

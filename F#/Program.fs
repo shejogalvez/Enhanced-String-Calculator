@@ -15,21 +15,22 @@ let separate_numbers_with_delimiters (numbers_with_delimiter : string) : option<
     ret
     | _ -> None, numbers_with_delimiter
 
-let rec parse_flexible_delimiter (delimiter_expr: list<char>) (partial_delimiter: list<char>): list<char> =
+let rec parse_flexible_delimiter (delimiter_expr: list<char>) (partial_delimiter: list<char>): list<char> * list<char> =
     match delimiter_expr with
-    | ']' :: _ -> 
+    | ']' :: delimeter_expr_tail -> 
         if partial_delimiter.Length = 0 then failwith "empty delimiter encountered"
-        else partial_delimiter
+        else partial_delimiter, delimeter_expr_tail
     | head :: tail ->  
         parse_flexible_delimiter tail (partial_delimiter @ [head])
     | _ -> failwith "unusual end of string on delimiter encountered"
 
-let rec parse_multiple_delimiters (delimiter_expr: list<char>): list<string> =
+let rec parse_complex_delimiters (delimiter_expr: list<char>): list<string> =
     match delimiter_expr with
-    | '[' :: delimeter :: ']' :: tail -> 
-        let delimeter_str = delimeter.ToString()
-        delimeter_str :: parse_multiple_delimiters tail 
-    | _ -> []
+    | '[' :: tail -> 
+        let delimeter_char_list, delimeter_expr_tail = parse_flexible_delimiter tail []
+        System.String.Concat delimeter_char_list :: parse_complex_delimiters delimeter_expr_tail
+    | [] -> []
+    | head :: _ -> failwithf "delimeter has to start with '[', '%c' found instead" head
 
 // get a delimiter expression and returns an array of delimiter strings
 let parse_delimiters (delimiter_str : option<string>) : array<string> =
@@ -41,16 +42,7 @@ let parse_delimiters (delimiter_str : option<string>) : array<string> =
     | 1 -> [|delimiter_expr_string|] // single character delimiter captured
     | _ -> // complex delimiters
     let delimiter_char_list = delimiter_expr_string |> Seq.toList
-    match delimiter_char_list with
-    | '[' :: tail ->
-    let multiple_delimeters = parse_multiple_delimiters delimiter_char_list
-    if List.length multiple_delimeters > 0 
-    then Seq.toArray multiple_delimeters
-    else
-        let res = parse_flexible_delimiter tail [] 
-                |> System.String.Concat 
-        [|res|]
-    | _ -> failwith "complex delimiter expression have to start with '['"
+    parse_complex_delimiters delimiter_char_list |> Seq.toArray
 
 
 let extract_negatives (numbers_list: list<int>): list<int> =
@@ -104,6 +96,13 @@ let test_cases = [
     "//[*][%]\n1*2%3"
     "//[%][*]\n1*2%3"
     "//[%][*]\n1\n2%3,4*5"
+    "//[***][%%]\n1***2%%3"
+    "//[%%][***][%%]\n1***2%%3"
+    "//[%%][[***]\n1[***2%%3" // somehow valid expression
+    "//[%%][***]\n1***2%%3"
+    "//[%%]a[***]\n1***2%%3"
+    "//[%%][***]]\n1***2%%3"
+    "//[%%][***\n1***2%%3"
 ]
 for test in test_cases do
     try 

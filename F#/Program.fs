@@ -17,9 +17,9 @@ let separate_numbers_with_delimiters (numbers_with_delimiter : string) : option<
 
 let rec parse_flexible_delimiter (delimiter_expr: list<char>) (partial_delimiter: list<char>): list<char> * list<char> =
     match delimiter_expr with
-    | ']' :: delimeter_expr_tail -> 
+    | ']' :: delimiter_expr_tail -> 
         if partial_delimiter.Length = 0 then failwith "empty delimiter encountered"
-        else partial_delimiter, delimeter_expr_tail
+        else partial_delimiter, delimiter_expr_tail
     | head :: tail ->  
         parse_flexible_delimiter tail (partial_delimiter @ [head])
     | _ -> failwith "unusual end of string on delimiter encountered"
@@ -27,10 +27,10 @@ let rec parse_flexible_delimiter (delimiter_expr: list<char>) (partial_delimiter
 let rec parse_complex_delimiters (delimiter_expr: list<char>): list<string> =
     match delimiter_expr with
     | '[' :: tail -> 
-        let delimeter_char_list, delimeter_expr_tail = parse_flexible_delimiter tail []
-        System.String.Concat delimeter_char_list :: parse_complex_delimiters delimeter_expr_tail
+        let delimiter_char_list, delimiter_expr_tail = parse_flexible_delimiter tail []
+        System.String.Concat delimiter_char_list :: parse_complex_delimiters delimiter_expr_tail
     | [] -> []
-    | head :: _ -> failwithf "delimeter has to start with '[', '%c' found instead" head
+    | head :: _ -> failwithf "delimiter has to start with '[', '%c' found instead" head
 
 // get a delimiter expression and returns an array of delimiter strings
 let parse_delimiters (delimiter_str : option<string>) : array<string> =
